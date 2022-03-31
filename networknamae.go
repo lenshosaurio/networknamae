@@ -13,33 +13,28 @@ func SSID() string {
 	var command string
 	switch os {
 	case "windows":
-		ssid = ""
-		break
+		output = runCommand("cmd", "/C", "netsh", "wlan", "show", "interfaces")
+		lines := strings.Split(output, "\r\n")
+		_, line := findElement("Profile", lines)
+		if len(strings.Split(line, ": ")) > 1 {
+			ssid = strings.Split(line, ": ")[1]
+		}
 	case "darwin":
 		command = "networksetup"
 		output = runCommand(command, "-listallhardwareports")
 		lines := strings.Split(output, "\n")
-		var stringFound string
-		for index, line := range lines {
-			if strings.Contains(line, "Wi-Fi") {
-				stringFound = lines[index+1]
-				break
-			}
-		}
+		position, _ := findElement("Wi-Fi", lines)
+		stringFound := lines[position+1]
 		card := strings.Split(stringFound, " ")[1]
 		output = runCommand(command, "-getairportnetwork", card)
 		ssid = strings.Split(output, " ")[len(strings.Split(output, " "))-1]
-		break
 	case "linux":
 		ssid = ""
-		break
 	default:
 		ssid = ""
-		break
 	}
 	return ssid
 }
-
 func runCommand(arguments ...string) string {
 	var result []byte
 	var err error
@@ -52,13 +47,24 @@ func runCommand(arguments ...string) string {
 		break
 	case 3:
 		result, err = exec.Command(arguments[0], arguments[1], arguments[2]).Output()
+		break
+	case 6:
+		result, err = exec.Command(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]).Output()
+		break
 	default:
 		break
 	}
 	check(err, "Running cmd"+arguments[0])
 	return string(result)
 }
-
+func findElement(element string, output []string) (int, string) {
+	for index, row := range output {
+		if strings.Contains(row, element) {
+			return index, row
+		}
+	}
+	return -1, ""
+}
 func check(err error, origin string) {
 	if err != nil {
 		panic(err.Error())
